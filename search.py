@@ -200,7 +200,7 @@ def depth_first_search(grid_size, start, goal, obstacles, costFn, logger):
     # Choose a proper container yourself from
     # OrderedSet, Stack, Queue, PriorityQueue
     # for the open set and closed set.
-    open_set = OrderedSet()
+    open_set = Stack()
     closed_set = OrderedSet()
     ##########################################
 
@@ -317,27 +317,27 @@ def breadth_first_search(grid_size, start, goal, obstacles, costFn, logger):
                 current = parent[current[0]][current[1]]
             movement.reverse()
             return movement, closed_set
+        
         # check all the neighbors of the current node
         for action in ACTIONS:
-            # get the neighbor node
             neighbor = (current[0] + action[0], current[1] + action[1])
-            # check if the neighbor is within the bounds of the grid
-            if neighbor[0] < 0 or neighbor[0] >= n_rows or neighbor[1] < 0 or neighbor[1] >= n_cols:
+            if neighbor[0] < 0 or neighbor[0] >= n_rows or neighbor[1] < 0 or neighbor[1] >= n_cols: # determine if the neighbor exists as a node in the grid
                 continue
-            # check if the neighbor is an obstacle
             if neighbor in obstacles:
                 continue
-            # check if the neighbor is already in the closed set
             if neighbor in closed_set:
                 continue
-            # check if the neighbor is already in the open set
+
+            # new node has been reached, add it to the open set
             if neighbor not in open_set:
                 open_set.add(neighbor)
                 parent[neighbor[0]][neighbor[1]] = current
                 actions[neighbor[0]][neighbor[1]] = action
-            # check if the neighbor is already in the open set
 #############################################################################
     return movement, closed_set
+
+def costFn():
+    return 1 # all cells have the same cost
 
 
 def uniform_cost_search(grid_size, start, goal, obstacles, costFn, logger):
@@ -358,7 +358,7 @@ def uniform_cost_search(grid_size, start, goal, obstacles, costFn, logger):
     # Choose a proper container yourself from
     # OrderedSet, Stack, Queue, PriorityQueue
     # for the open set and closed set.
-    open_set = OrderedSet()
+    open_set = PriorityQueue()
     closed_set = OrderedSet()
     ##########################################
 
@@ -377,35 +377,100 @@ def uniform_cost_search(grid_size, start, goal, obstacles, costFn, logger):
     actions = [ # the action that the parent took to reach the cell
         [None for __ in range(n_cols)] for _ in range(n_rows)
     ]
+
+    costs = {} # Dictionary to store the minimum cumulative cost (g_cost) found so far for each cell
 
     movement = []
     # ----------------------------------------
     # finish the code below
     # ----------------------------------------
 #############################################################################
+    # initialize the starting node
+    costs[start] = 0
+    open_set.put(start, 0) # add the first node to the priority queue with cost 0
 
-#############################################################################
+    while len(open_set) > 0:
+        current, current_g_cost = open_set.pop() # pop highest priority node (lowest cost)
+
+        if current in closed_set: # If already in closed set, skip processing
+           continue
+
+        closed_set.add(current) # add the current node to the closed set
+
+        if current == goal: #goal node reached
+            path_current = goal
+            while parent[path_current[0]][path_current[1]] is not None:
+                action_taken = actions[path_current[0]][path_current[1]]
+                movement.append(action_taken)
+                path_current = parent[path_current[0]][path_current[1]]
+            movement.reverse()
+            return movement, closed_set
+
+        for action in ACTIONS:
+            row_change, col_change = action
+            neighbor_row, neighbor_col = current[0] + row_change, current[1] + col_change
+            neighbor = (neighbor_row, neighbor_col)
+
+            ##check if the neighbor is within the grid bounds
+            if not (0 <= neighbor_row < n_rows and 0 <= neighbor_col < n_cols):
+                continue
+
+            # check obstacles
+            if neighbor in obstacles:
+                continue
+            
+            #check in closed set
+            if neighbor in closed_set:
+                continue
+            
+            #calculate function cost
+            step_cost = costFn(neighbor)
+            new_g_cost = current_g_cost + step_cost
+
+            # 5. Check if this path to the neighbor is better than any previously found path OR if neighbor is new
+            existing_g_cost = costs.get(neighbor, float('inf')) # Get current best cost, default infinity
+
+            if new_g_cost < existing_g_cost:
+                # Found a better path! Update records.
+                costs[neighbor] = new_g_cost # Update the best cost found for neighbor
+                parent[neighbor_row][neighbor_col] = current
+                actions[neighbor_row][neighbor_col] = action
+                open_set.put(neighbor, new_g_cost)
+
+    
+    path_current = goal
+    while parent[path_current[0]][path_current[1]] is not None:
+        action_taken = actions[path_current[0]][path_current[1]]
+        movement.append(action_taken)
+        path_current = parent[path_current[0]][path_current[1]]
+    movement.reverse()
     return movement, closed_set
 
 def astar_search(grid_size, start, goal, obstacles, costFn, logger):
     """
     A* search algorithm finds the optimal path from the start cell to the
-    goal cell in the 2D grid world.
+    goal cell in the 2D grid world using a heuristic.
 
-    After expanding a node, to retrieve the cost of a child node at location (x,y), 
-    please call costFn((x,y)).   
+    Uses Manhattan distance as the heuristic.
 
-    See depth_first_search() for details.    
+    After expanding a node, to retrieve the cost of landing on a child node at location (x,y),
+    please call costFn((x,y)).
+
+    See depth_first_search() for parameter details.
     """
     n_rows, n_cols = grid_size
     start_row, start_col = start
-    goal_row, goal_col = goal
+    goal_row, goal_col = goal # Goal coordinates needed for heuristic
+
+    # Use a set for efficient obstacle checking
+    obstacle_set = set(obstacles)
 
     ##########################################
     # Choose a proper container yourself from
     # OrderedSet, Stack, Queue, PriorityQueue
     # for the open set and closed set.
-    open_set = OrderedSet()
+    # A* needs a Priority Queue ordered by f_cost = g_cost + h_cost
+    open_set = PriorityQueue()
     closed_set = OrderedSet()
     ##########################################
 
@@ -417,7 +482,7 @@ def astar_search(grid_size, start, goal, obstacles, costFn, logger):
     open_set.logger = logger
     logger.open_set = open_set
     ##########################################
-    
+
     parent = [ # the immediate predecessor cell from which to reach a cell
         [None for __ in range(n_cols)] for _ in range(n_rows)
     ]
@@ -425,15 +490,120 @@ def astar_search(grid_size, start, goal, obstacles, costFn, logger):
         [None for __ in range(n_cols)] for _ in range(n_rows)
     ]
 
+    # Dictionary to store the minimum cumulative cost (g_cost) found so far for each cell
+    g_costs = {}
+
     movement = []
 
     # ----------------------------------------
-    # finish the code below to implement a Manhattan distance heuristic
+    # Manhattan distance heuristic implementation
     # ----------------------------------------
     def heuristic(row, col):
+        """Calculates the Manhattan distance from (row, col) to the goal."""
 #############################################################################
-        pass
+        # Manhattan distance: |delta_row| + |delta_col|
+        return abs(row - goal_row) + abs(col - goal_col)
 #############################################################################
+
+    # --- A* Algorithm Implementation ---
+
+    # Initialize start node: g_cost = 0, calculate h_cost and f_cost
+    g_costs[start] = 0
+    h_start = heuristic(start_row, start_col)
+    f_start = g_costs[start] + h_start
+
+    # Add start node to open set using put(item, priority)
+    # Priority for A* is the f_cost
+    open_set.put(start, f_start)
+
+    # Main loop: Continue while there are nodes to explore
+    while len(open_set) > 0:
+        # Get the node with the lowest f_cost from the priority queue
+        # Assumes user's pop() returns (item, priority) -> (node, f_cost)
+        try:
+             current, current_f_cost_popped = open_set.pop()
+        except IndexError: # Handle empty queue case if pop raises it
+             break
+
+        # Retrieve the g_cost associated with the path leading to this node
+        # This g_cost is the one stored when this node was *added* optimally to open_set
+        current_g_cost = g_costs.get(current) # Use .get() for safety
+        if current_g_cost is None:
+             # Should not happen if logic is correct, but provides safety
+             print(f"Warning: Popped node {current} not found in g_costs.")
+             continue
+
+        # Optimization / Correctness for duplicate entries in PQ:
+        # If we've already processed this node optimally, skip.
+        if current in closed_set:
+           continue
+
+        # Add the current node to the closed set (marking it as optimally processed)
+        closed_set.add(current)
+
+        # Goal check: If the current node is the goal, reconstruct and return path
+        if current == goal:
+            path_current = goal
+            while parent[path_current[0]][path_current[1]] is not None:
+                action_taken = actions[path_current[0]][path_current[1]]
+                movement.append(action_taken)
+                path_current = parent[path_current[0]][path_current[1]]
+            movement.reverse() # Path is built backward, so reverse it
+            # If return type for closed_set must be list: return movement, closed_set.get_list()
+            return movement, closed_set
+
+        # Explore neighbors
+        for action in ACTIONS:
+            row_change, col_change = action
+
+            # Defensive check for 'current' type based on previous errors
+            if not isinstance(current, tuple) or len(current) != 2:
+                 print(f"ERROR: 'current' is not a valid coordinate tuple. Value: {current}, Type: {type(current)}")
+                 return [], closed_set # Fail gracefully
+
+            neighbor_row = current[0] + row_change
+            neighbor_col = current[1] + col_change
+            neighbor = (neighbor_row, neighbor_col)
+
+            # 1. Boundary check
+            if not (0 <= neighbor_row < n_rows and 0 <= neighbor_col < n_cols):
+                continue
+
+            # 2. Obstacle check
+            if neighbor in obstacle_set:
+                continue
+
+            # 3. Calculate tentative g_cost for neighbor through current node
+            #    g_cost(neighbor) = g_cost(current) + cost_of_step_to_neighbor
+            step_cost = costFn(neighbor) # Cost of landing on the neighbor cell
+            new_g_cost = current_g_cost + step_cost
+
+            # 4. Check if neighbor is in closed set. If A* heuristic is consistent (like Manhattan),
+            #    we don't need to reopen nodes from the closed set if we find them via a higher g_cost path.
+            #    If we find a lower g_cost path *before* it's expanded, the update logic below handles it.
+            if neighbor in closed_set:
+                 continue
+
+            # 5. Check if this path to the neighbor is better than any previously found path OR if neighbor is new
+            existing_g_cost = g_costs.get(neighbor, float('inf')) # Get current best known g_cost
+
+            if new_g_cost < existing_g_cost:
+                # Found a better path! Update records.
+                g_costs[neighbor] = new_g_cost # Update the best g_cost found for neighbor
+                parent[neighbor_row][neighbor_col] = current
+                actions[neighbor_row][neighbor_col] = action
+
+                # Calculate the f_cost = g_cost + h_cost for the priority queue
+                h_neighbor = heuristic(neighbor_row, neighbor_col)
+                new_f_cost = new_g_cost + h_neighbor
+
+                # Add neighbor to the open set with its f_cost as priority
+                # This might add a duplicate if neighbor was already present with a higher f_cost
+                # (due to higher g_cost). The check `if current in closed_set:` at the start
+                # of the loop handles ignoring the worse path when it's eventually popped.
+                open_set.put(neighbor, new_f_cost)
+
+    # If the loop finishes without finding the goal, no path exists
     return movement, closed_set
 
 if __name__ == "__main__":
