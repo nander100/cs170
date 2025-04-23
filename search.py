@@ -225,7 +225,39 @@ def depth_first_search(grid_size, start, goal, obstacles, costFn, logger):
     # finish the code below
     # ----------------------------------------
 #############################################################################
-
+    # start is defined in parameters
+    open_set.add(start) # add the first node to the stack
+    while len(open_set) > 0: # while there are still nodes in the stack
+        # pop the last node in the stack
+        current = open_set.pop()
+        closed_set.add(current)
+        # check if the current node is the goal
+        if current == goal:
+            # reconstruct the path
+            while parent[current[0]][current[1]] is not None:
+                movement.append(actions[current[0]][current[1]])
+                current = parent[current[0]][current[1]]
+            movement.reverse()
+            return movement, closed_set
+        # check all the neighbors of the current node
+        for action in ACTIONS:
+            # get the neighbor node
+            neighbor = (current[0] + action[0], current[1] + action[1])
+            # check if the neighbor is within the bounds of the grid
+            if neighbor[0] < 0 or neighbor[0] >= n_rows or neighbor[1] < 0 or neighbor[1] >= n_cols:
+                continue
+            # check if the neighbor is an obstacle
+            if neighbor in obstacles:
+                continue
+            # check if the neighbor is already in the closed set
+            if neighbor in closed_set:
+                continue
+            # check if the neighbor is already in the open set
+            if neighbor not in open_set:
+                open_set.add(neighbor)
+                parent[neighbor[0]][neighbor[1]] = current
+                actions[neighbor[0]][neighbor[1]] = action
+            # check if the neighbor is already in the open set
 #############################################################################
     return movement, closed_set
 
@@ -247,7 +279,7 @@ def breadth_first_search(grid_size, start, goal, obstacles, costFn, logger):
     # Choose a proper container yourself from
     # OrderedSet, Stack, Queue, PriorityQueue
     # for the open set and closed set.
-    open_set = OrderedSet()
+    open_set = Queue()
     closed_set = OrderedSet()
     ##########################################
 
@@ -272,7 +304,38 @@ def breadth_first_search(grid_size, start, goal, obstacles, costFn, logger):
     # finish the code below
     # ----------------------------------------
 #############################################################################
-
+    open_set.add(start) # add the first node to the stack
+    while len(open_set) > 0: # while there are still nodes in the stack
+        # pop the last node in the stack
+        current = open_set.pop()
+        closed_set.add(current)
+        # check if the current node is the goal
+        if current == goal:
+            # reconstruct the path
+            while parent[current[0]][current[1]] is not None:
+                movement.append(actions[current[0]][current[1]])
+                current = parent[current[0]][current[1]]
+            movement.reverse()
+            return movement, closed_set
+        # check all the neighbors of the current node
+        for action in ACTIONS:
+            # get the neighbor node
+            neighbor = (current[0] + action[0], current[1] + action[1])
+            # check if the neighbor is within the bounds of the grid
+            if neighbor[0] < 0 or neighbor[0] >= n_rows or neighbor[1] < 0 or neighbor[1] >= n_cols:
+                continue
+            # check if the neighbor is an obstacle
+            if neighbor in obstacles:
+                continue
+            # check if the neighbor is already in the closed set
+            if neighbor in closed_set:
+                continue
+            # check if the neighbor is already in the open set
+            if neighbor not in open_set:
+                open_set.add(neighbor)
+                parent[neighbor[0]][neighbor[1]] = current
+                actions[neighbor[0]][neighbor[1]] = action
+            # check if the neighbor is already in the open set
 #############################################################################
     return movement, closed_set
 
